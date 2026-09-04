@@ -29,6 +29,7 @@ export async function GET(request: Request): Promise<Response> {
   const parsed = getPricesQuerySchema.safeParse({
     crop_id: searchParams.get("crop_id") ?? undefined,
     district: searchParams.get("district") ?? undefined,
+    farm_id: searchParams.get("farm_id") ?? undefined,
     query: searchParams.get("query") ?? undefined,
     include_bordering: searchParams.get("include_bordering") ?? "true",
   });
@@ -72,6 +73,21 @@ export async function GET(request: Request): Promise<Response> {
     }
 
     let district = input.district ?? null;
+    let farmLat: number | null = null;
+    let farmLng: number | null = null;
+
+    if (input.farm_id && !district) {
+      const farm = await queryOne<{ district: string; lat: string | number | null; lng: string | number | null }>(
+        `select district, lat, lng from farms where id = $1 and account_id = $2 and archived_at is null`,
+        [input.farm_id, session.accountId]
+      );
+      if (farm) {
+        district = farm.district ?? null;
+        farmLat = farm.lat != null ? Number(farm.lat) : null;
+        farmLng = farm.lng != null ? Number(farm.lng) : null;
+      }
+    }
+
     if (!district) {
       const farm = await queryOne<{ district: string }>(
         `select district from farms where account_id = $1 and archived_at is null order by created_at desc limit 1`,
@@ -103,7 +119,9 @@ export async function GET(request: Request): Promise<Response> {
     );
 
     const uniquePrices = dedupeLatestPricePerMandiCrop(prices);
-    const enriched = enrichPrices(uniquePrices, context.farmLat, context.farmLng);
+    const effectiveLat = farmLat ?? context.farmLat;
+    const effectiveLng = farmLng ?? context.farmLng;
+    const enriched = enrichPrices(uniquePrices, effectiveLat, effectiveLng);
 
     if (enriched.length > 0) {
       const bestModal = Math.max(...enriched.map((p) => p.modal_price));

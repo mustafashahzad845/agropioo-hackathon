@@ -43,12 +43,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
     const totalProjectedCost = (projectedCosts ?? []).reduce((sum, p) => sum + Number(p.total_projected_pkr), 0);
     const totalActualCost = (expenses ?? []).reduce((sum, e) => sum + Number(e.amount), 0);
-    const projectedRevenue = (season.expected_yield && season.expected_price)
+    const projectedRevenue = (season.expected_yield != null && season.expected_price != null)
       ? Number(season.expected_yield) * Number(season.expected_price)
       : 0;
-    const actualRevenue = (season.actual_yield && season.actual_price)
-      ? Number(season.actual_yield) * Number(season.actual_price)
-      : 0;
+    const actualRevenue = (season.actual_price != null) ? Number(season.actual_price) : 0;
 
     const pl = computePL({ totalProjectedCost, totalActualCost, projectedRevenue, actualRevenue, totalInvestment: totalProjectedCost });
     const breakEven = computeBreakEven(totalProjectedCost, Number(season.expected_price) || null, Number(season.expected_yield) || null, Number(season.acres));

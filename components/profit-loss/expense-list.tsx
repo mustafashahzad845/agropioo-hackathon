@@ -31,7 +31,7 @@ export default function ExpenseList({ expenses }: { expenses: (Expense & { varia
           </div>
           {expense.variance_percentage !== undefined && expense.variance_percentage !== null && (
             <span className={`text-xs font-medium ${expense.variance_percentage > 0 ? "text-agro-error" : expense.variance_percentage < 0 ? "text-agro-canopy" : "text-agro-slate"}`}>
-              {expense.variance_percentage > 0 ? "+" : ""}{expense.variance_percentage}%
+              {expense.variance_percentage > 0 ? "+" : ""}{expense.variance_percentage}% vs plan
             </span>
           )}
         </li>

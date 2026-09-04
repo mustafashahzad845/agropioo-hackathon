@@ -11,7 +11,7 @@ import {
 } from "@/lib/validation/crops";
 import { recommendCrops, WeatherUnavailableError, RecommendationExistsError, NoCandidatesError, OutsidePakistanError, FarmNotFoundError, FarmForbiddenError, DataUnavailableError } from "@/lib/crops/engine";
 import { query, queryOne } from "@/lib/db";
-import type { RecommendCropsInput } from "@/lib/crops/api-types";
+import type { CropRecommendationRequest, RecommendCropsInput } from "@/lib/crops/api-types";
 
 export async function POST(request: Request) {
   const session = await requireSessionApi();
@@ -57,6 +57,7 @@ export async function POST(request: Request) {
       return errorResponse(err.code, err.message, err.status);
     }
     if (err instanceof RecommendationExistsError) {
+      console.log("crops recommendation_exists", err.existing);
       return jsonResponse(
         { error: errorBody(err.code, err.message), existing: err.existing },
         err.status,
@@ -81,7 +82,15 @@ export async function POST(request: Request) {
       return errorResponse(err.code, err.message, err.status);
     }
     if (err && typeof err === "object" && "code" in err && err.code === "23505") {
-      return errorResponse("recommendation_exists", "You already have a recommendation for this farm, season, and year.", 409);
+      const existing = await queryOne<CropRecommendationRequest>(
+        `SELECT * FROM crop_recommendation_requests WHERE account_id = $1 AND farm_id = $2 AND target_season = $3 AND target_year = $4`,
+        [session.accountId, parsed.data.farm_id, parsed.data.target_season, parsed.data.target_year],
+      );
+      console.log("crops 23505 existing", existing);
+      return jsonResponse(
+        { error: errorBody("recommendation_exists", "You already have a recommendation for this farm, season, and year."), existing },
+        409,
+      );
     }
     console.error("crops recommendation failed:", err);
     return errorResponse("server_error", "Something went wrong. Please try again.", 500);

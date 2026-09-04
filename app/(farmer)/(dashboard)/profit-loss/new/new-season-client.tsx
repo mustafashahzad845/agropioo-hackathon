@@ -12,6 +12,7 @@ import { ChevronDownIcon, CheckIcon } from "@/components/icons";
 type Props = {
   farms: Array<{ id: string; name: string }>;
   crops: Array<{ id: string; name_en: string }>;
+  farmCrops: Record<string, string[]>;
 };
 
 function SearchableSelect({
@@ -141,10 +142,10 @@ function getMessage(err: unknown): string | undefined {
   return undefined;
 }
 
-export default function NewSeasonClient({ farms, crops }: Props) {
+export default function NewSeasonClient({ farms, crops, farmCrops }: Props) {
   const router = useRouter();
   const [cropId, setCropId] = useState<string>("");
-  const { register, handleSubmit, formState: { errors, isSubmitting }, setValue } = useForm<CreateSeasonInput>({
+  const { register, handleSubmit, formState: { errors, isSubmitting }, setValue, watch } = useForm<CreateSeasonInput>({
     resolver: async (data) => {
       const result = createSeasonSchema.safeParse(data);
       if (result.success) return { values: result.data, errors: {} };
@@ -156,6 +157,12 @@ export default function NewSeasonClient({ farms, crops }: Props) {
       return { values: {}, errors: fieldErrors };
     },
   });
+
+  const selectedFarmId = watch("farm_id") || "";
+  const farmCropNames = farmCrops[selectedFarmId] || [];
+  const availableCrops = farmCropNames.length > 0
+    ? crops.filter((c) => farmCropNames.includes(c.name_en.toLowerCase()))
+    : crops;
 
   useEffect(() => {
     setValue("crop_id", cropId as CreateSeasonInput["crop_id"]);
@@ -199,8 +206,8 @@ export default function NewSeasonClient({ farms, crops }: Props) {
             <SearchableSelect
               value={cropId}
               onChange={setCropId}
-              options={crops.map((crop) => ({ value: crop.id, label: crop.name_en }))}
-              placeholder="Select a crop"
+              options={availableCrops.map((crop) => ({ value: crop.id, label: crop.name_en }))}
+              placeholder={selectedFarmId ? "Select a crop for this farm" : "Select a farm first"}
               error={getMessage(errors.crop_id)}
             />
           </div>

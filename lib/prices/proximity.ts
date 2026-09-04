@@ -73,7 +73,7 @@ export async function resolveDistrictContext(
   }
 
   const mandi = await queryOneMandi(
-    `select * from mandis where district = $1 limit 1`,
+    `select * from mandis where lower(district) = lower($1) limit 1`,
     [districtSlug]
   );
 

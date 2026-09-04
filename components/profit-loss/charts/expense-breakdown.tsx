@@ -3,7 +3,14 @@
 type ExpenseRow = { category: string; amount: number };
 
 export default function ExpenseBreakdown({ expenses }: { expenses: ExpenseRow[] }) {
-  if (expenses.length === 0) return null;
+  if (expenses.length === 0) {
+    return (
+      <div className="mt-4 flex flex-col items-center gap-2 rounded-xl border border-dashed border-agro-sprout bg-agro-paper p-6 text-center">
+        <p className="text-sm font-medium text-agro-slate">No expenses recorded yet</p>
+        <p className="text-xs text-agro-cloud">Log your first expense to see the breakdown</p>
+      </div>
+    );
+  }
 
   const categories = Array.from(new Set(expenses.map((e) => e.category)));
   const totals: Record<string, number> = {};

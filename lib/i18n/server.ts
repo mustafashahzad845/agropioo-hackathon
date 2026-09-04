@@ -665,6 +665,7 @@ export async function getPricesBundle(): Promise<PricesBundle> {
     eyebrow: t("app.prices.eyebrow").text,
     title: t("app.prices.title").text,
     description: t("app.prices.description").text,
+    selectFarm: t("app.prices.selectFarm").text,
     selectCrop: t("app.prices.selectCrop").text,
     searchPlaceholder: t("app.prices.searchPlaceholder").text,
     globalSearchPlaceholder: t("app.prices.globalSearchPlaceholder").text,

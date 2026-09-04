@@ -422,43 +422,6 @@ function YearSelect({ value, onChange, isOpen, onOpen, inputRef, minYear }: { va
   );
 }
 
-function SkeletonCard() {
-  return (
-    <div className="rounded-2xl border border-agro-sprout bg-white p-5 sm:p-6 animate-pulse">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-agro-paper sm:h-11 sm:w-11" />
-        <div className="flex-1 space-y-2">
-          <div className="h-5 w-32 rounded bg-agro-paper" />
-          <div className="h-3 w-20 rounded bg-agro-paper" />
-        </div>
-      </div>
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4">
-        <div className="rounded-xl bg-agro-paper p-3 sm:p-4">
-          <div className="h-3 w-16 rounded bg-agro-paper/80" />
-          <div className="mt-2 h-5 w-24 rounded bg-agro-paper/80" />
-        </div>
-        <div className="rounded-xl bg-agro-paper p-3 sm:p-4">
-          <div className="h-3 w-16 rounded bg-agro-paper/80" />
-          <div className="mt-2 h-5 w-24 rounded bg-agro-paper/80" />
-        </div>
-        <div className="rounded-xl bg-agro-paper p-3 sm:p-4">
-          <div className="h-3 w-16 rounded bg-agro-paper/80" />
-          <div className="mt-2 h-5 w-24 rounded bg-agro-paper/80" />
-        </div>
-        <div className="rounded-xl bg-agro-paper p-3 sm:p-4">
-          <div className="h-3 w-16 rounded bg-agro-paper/80" />
-          <div className="mt-2 h-5 w-24 rounded bg-agro-paper/80" />
-        </div>
-      </div>
-      <div className="mt-4 h-4 w-full rounded bg-agro-paper/60" />
-      <div className="mt-4 flex gap-2">
-        <div className="h-10 flex-1 rounded-xl bg-agro-paper/60" />
-        <div className="h-10 flex-1 rounded-xl border border-agro-sprout bg-agro-paper/40" />
-      </div>
-    </div>
-  );
-}
-
 function RecommendationCard({
   recommendation,
   bundle,
@@ -767,14 +730,24 @@ export default function CropsClient({ bundle, farms, initialRecommendations = []
           soil_type: values.soilType,
           irrigation_type: values.irrigationType,
           budget_bracket: values.budgetBracket,
+          regenerate: true,
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
+        console.log("crops api error", res.status, data);
         if (res.status === 409 && data.error?.code === "recommendation_exists") {
-          setExistingRequest(data.existing);
+          console.log("crops 409 existing", data.existing);
+          const existingId = data.existing?.id ?? data.existing?.request_id ?? null;
+          if (existingId) {
+            await loadExisting(existingId);
+          } else if (data.existing) {
+            setExistingRequest(data.existing);
+          } else {
+            setError(bundle.errors.generic);
+          }
           return;
         }
         if (res.status === 503) {
@@ -1031,14 +1004,6 @@ export default function CropsClient({ bundle, farms, initialRecommendations = []
           ) : (
             <p>{bundle.results.noCandidates}</p>
           )}
-        </div>
-      )}
-
-      {loading && recommendations.length === 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
         </div>
       )}
 

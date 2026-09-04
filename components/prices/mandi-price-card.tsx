@@ -54,6 +54,7 @@ export default function MandiPriceCard({
               {price.mandi_name}
             </h3>
             <p className="mt-0.5 text-xs capitalize text-agro-slate">{price.district}</p>
+            <p className="mt-1 text-xs font-semibold text-agro-canopy">{price.crop_name}</p>
           </div>
         </div>
 

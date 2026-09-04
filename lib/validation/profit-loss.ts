@@ -8,7 +8,7 @@ export type ProjectedCategory = (typeof PROJECTED_CATEGORIES)[number];
 
 export const seasonEnum = z.enum(SEASONS);
 export const yearEnum = z.enum(YEAR_OPTIONS as unknown as [string, ...string[]]);
-export const cropEnum = z.enum(CROPS);
+export const cropEnum = z.enum(CROPS, { message: 'Please select a valid crop from the list' });
 export const expenseCategoryEnum = z.enum(EXPENSE_CATEGORIES);
 export const projectedCategoryEnum = z.enum(PROJECTED_CATEGORIES);
 
@@ -27,6 +27,8 @@ export const updateSeasonSchema = z.object({
   acres: z.coerce.number().positive('Acres must be greater than 0').max(99999).optional(),
   expected_yield: z.coerce.number().gte(0).optional().nullable(),
   expected_price: z.coerce.number().gte(0).optional().nullable(),
+  actual_yield: z.coerce.number().gte(0).optional().nullable(),
+  actual_price: z.coerce.number().gte(0).optional().nullable(),
 });
 
 export const createExpenseSchema = z.object({

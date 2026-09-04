@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useCallback } from "react";
 import Link from "next/link";
 import MandiPriceCard, { type MandiPrice } from "@/components/prices/mandi-price-card";
 import MarketComparisonTable from "@/components/prices/market-comparison-table";
@@ -8,13 +8,13 @@ import PredictionChart from "@/components/prices/prediction-chart";
 import RecommendationBadge from "@/components/prices/recommendation-badge";
 import PriceAlertModal, { type AlertFormData, type SavedAlert } from "@/components/prices/price-alert-modal";
 import PriceHistoryChart, { type HistoryPoint } from "@/components/prices/price-history-chart";
-import FavoriteCropStar from "@/components/prices/favorite-crop-star";
-import { SearchIcon } from "@/components/icons";
+import { SearchIcon, ChevronDownIcon } from "@/components/icons";
 import type { PricesBundle } from "./prices-bundle";
 import type { ForecastPoint } from "@/lib/prices/forecast";
 
 type CropOption = { id: string; name_en: string };
 type MandiOption = { id: string; name_en: string };
+type FarmOption = { id: string; name: string; district?: string; crops?: string };
 
 type PricesResponse = {
   district: string | null;
@@ -43,12 +43,19 @@ interface PricesClientProps {
   bundle: PricesBundle;
   crops: CropOption[];
   mandis: MandiOption[];
+  farms: FarmOption[];
   initial: PricesResponse;
 }
 
-export default function PricesClient({ bundle, crops, mandis, initial }: PricesClientProps) {
+export default function PricesClient({ bundle, crops, mandis, farms, initial }: PricesClientProps) {
   const [selectedCrop, setSelectedCrop] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedFarmId, setSelectedFarmId] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("selectedFarmId") ?? "";
+    }
+    return "";
+  });
   const [prices, setPrices] = useState<PricesResponse>(initial);
   const [isPending, startTransition] = useTransition();
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
@@ -61,11 +68,12 @@ export default function PricesClient({ bundle, crops, mandis, initial }: PricesC
   const [modalOpen, setModalOpen] = useState(false);
   const [editingAlert, setEditingAlert] = useState<SavedAlert | null>(null);
   const [alertActionPending, setAlertActionPending] = useState(false);
-  const [favourites, setFavourites] = useState<string[]>([]);
 
-  async function loadPrices(params: { crop_id?: string; query?: string }) {
+  const loadPrices = useCallback(async (params: { crop_id?: string; query?: string; farm_id?: string }) => {
     startTransition(async () => {
       const url = new URL("/api/prices", window.location.origin);
+      const farmId = params.farm_id;
+      if (farmId) url.searchParams.set("farm_id", farmId);
       if (params.crop_id) url.searchParams.set("crop_id", params.crop_id);
       if (params.query) url.searchParams.set("query", params.query);
       const res = await fetch(url.toString(), { credentials: "same-origin" });
@@ -76,12 +84,27 @@ export default function PricesClient({ bundle, crops, mandis, initial }: PricesC
       const data = (await res.json()) as PricesResponse;
       setPrices(data);
     });
-  }
+  }, []);
+
+  useEffect(() => {
+    if (selectedFarmId) {
+      loadPrices({ farm_id: selectedFarmId });
+    }
+  }, [selectedFarmId, loadPrices]);
 
   function handleCropChange(cropId: string) {
     setSelectedCrop(cropId);
     setSearchQuery("");
     loadPrices({ crop_id: cropId || undefined });
+  }
+
+  function handleFarmChange(farmId: string) {
+    setSelectedFarmId(farmId);
+    localStorage.setItem("selectedFarmId", farmId);
+    document.cookie = `selectedFarmId=${encodeURIComponent(farmId)}; path=/; max-age=${60 * 60 * 24 * 365}`;
+    setSelectedCrop("");
+    setSearchQuery("");
+    loadPrices({ farm_id: farmId });
   }
 
   function handleSearchSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -233,38 +256,6 @@ export default function PricesClient({ bundle, crops, mandis, initial }: PricesC
     }
   }
 
-  async function toggleFavourite(cropId: string) {
-    const isFav = favourites.includes(cropId);
-    const url = "/api/favourites";
-    const method = isFav ? "DELETE" : "POST";
-    const body = isFav ? undefined : JSON.stringify({ crop_id: cropId, display_order: 0 });
-
-    const res = await fetch(url, {
-      method,
-      credentials: "same-origin",
-      headers: method === "POST" ? { "Content-Type": "application/json" } : undefined,
-      body,
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      setFavourites((data.favourites ?? []).map((f: { crop_id: string }) => f.crop_id));
-    }
-  }
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      const res = await fetch("/api/favourites", { credentials: "same-origin" });
-      if (!cancelled && res.ok) {
-        const data = await res.json();
-        setFavourites((data.favourites ?? []).map((f: { crop_id: string }) => f.crop_id));
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, []);
-
   function openNewAlert() {
     setEditingAlert(null);
     setModalOpen(true);
@@ -291,57 +282,115 @@ export default function PricesClient({ bundle, crops, mandis, initial }: PricesC
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="sm:w-56">
-          <label htmlFor="crop-select" className="sr-only">
-            {bundle.selectCrop}
-          </label>
-          <select
-            id="crop-select"
-            value={selectedCrop}
-            onChange={(e) => handleCropChange(e.target.value)}
-            className="w-full rounded-xl border border-agro-sprout bg-white px-3 py-2.5 text-sm text-agro-ink outline-none focus:border-agro-canopy focus:ring-2 focus:ring-agro-canopy/20"
-          >
-            <option value="">{bundle.selectCrop}</option>
-            {crops.map((crop) => (
-              <option key={crop.id} value={crop.id}>
-                {crop.name_en}
-              </option>
-            ))}
-          </select>
+      {farms.length > 0 ? (
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="sm:w-56">
+            <label htmlFor="farm-select" className="sr-only">
+              {bundle.selectFarm}
+            </label>
+            <div className="relative">
+              <select
+                id="farm-select"
+                value={selectedFarmId}
+                onChange={(e) => handleFarmChange(e.target.value)}
+                className="h-11 w-full truncate appearance-none rounded-xl border border-agro-canopy bg-white pl-4 pr-10 text-sm font-sans text-agro-ink outline-none transition-colors focus:ring-2 focus:ring-agro-canopy/20"
+              >
+                <option value="">{bundle.selectFarm}</option>
+                {farms.map((farm) => (
+                  <option key={farm.id} value={farm.id} className="truncate">
+                    {farm.name} {farm.district ? `— ${farm.district}` : ""}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-agro-slate">
+                <ChevronDownIcon size={16} />
+              </span>
+            </div>
+          </div>
+
+          <div className="sm:w-56">
+            <label htmlFor="crop-select" className="sr-only">
+              {bundle.selectCrop}
+            </label>
+            <select
+              id="crop-select"
+              value={selectedCrop}
+              onChange={(e) => handleCropChange(e.target.value)}
+              className="w-full rounded-xl border border-agro-canopy bg-white px-3 py-2.5 text-sm text-agro-ink outline-none focus:ring-2 focus:ring-agro-canopy/20"
+            >
+              <option value="">{bundle.selectCrop}</option>
+              {crops.map((crop) => (
+                <option key={crop.id} value={crop.id}>
+                  {crop.name_en}
+                </option>
+              ))}
+            </select>
+          </div>
+
+
+          <form onSubmit={handleSearchSubmit} className="flex-1">
+            <label htmlFor="price-search" className="sr-only">
+              {bundle.searchPlaceholder}
+            </label>
+            <div className="relative">
+              <SearchIcon
+                size={18}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-agro-cloud"
+              />
+               <input
+                 id="price-search"
+                 type="search"
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 placeholder={bundle.searchPlaceholder}
+                 className="w-full rounded-xl border border-agro-canopy bg-white py-2.5 pl-10 pr-4 text-sm text-agro-ink outline-none focus:ring-2 focus:ring-agro-canopy/20"
+               />
+            </div>
+          </form>
         </div>
-
-        {selectedCrop ? (
-          <div className="flex items-center">
-            <FavoriteCropStar
-              cropId={selectedCrop}
-              isFavorite={favourites.includes(selectedCrop)}
-              onToggle={toggleFavourite}
-              ariaLabel={favourites.includes(selectedCrop) ? "Remove from favourites" : "Add to favourites"}
-            />
+      ) : (
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="sm:w-56">
+            <label htmlFor="crop-select" className="sr-only">
+              {bundle.selectCrop}
+            </label>
+            <select
+              id="crop-select"
+              value={selectedCrop}
+              onChange={(e) => handleCropChange(e.target.value)}
+              className="w-full rounded-xl border border-agro-canopy bg-white px-3 py-2.5 text-sm text-agro-ink outline-none focus:ring-2 focus:ring-agro-canopy/20"
+            >
+              <option value="">{bundle.selectCrop}</option>
+              {crops.map((crop) => (
+                <option key={crop.id} value={crop.id}>
+                  {crop.name_en}
+                </option>
+              ))}
+            </select>
           </div>
-        ) : null}
 
-        <form onSubmit={handleSearchSubmit} className="flex-1">
-          <label htmlFor="price-search" className="sr-only">
-            {bundle.searchPlaceholder}
-          </label>
-          <div className="relative">
-            <SearchIcon
-              size={18}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-agro-cloud"
-            />
-            <input
-              id="price-search"
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={bundle.searchPlaceholder}
-              className="w-full rounded-xl border border-agro-sprout bg-white py-2.5 pl-10 pr-4 text-sm text-agro-ink outline-none focus:border-agro-canopy focus:ring-2 focus:ring-agro-canopy/20"
-            />
-          </div>
-        </form>
-      </div>
+
+          <form onSubmit={handleSearchSubmit} className="flex-1">
+            <label htmlFor="price-search" className="sr-only">
+              {bundle.searchPlaceholder}
+            </label>
+            <div className="relative">
+              <SearchIcon
+                size={18}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-agro-cloud"
+              />
+               <input
+                 id="price-search"
+                 type="search"
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 placeholder={bundle.searchPlaceholder}
+                 className="w-full rounded-xl border border-agro-canopy bg-white py-2.5 pl-10 pr-4 text-sm text-agro-ink outline-none focus:ring-2 focus:ring-agro-canopy/20"
+               />
+            </div>
+          </form>
+        </div>
+      )}
 
       {prices.district && !prices.is_fallback_hub ? (
         <p className="text-sm text-agro-slate">

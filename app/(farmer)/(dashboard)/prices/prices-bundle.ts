@@ -6,6 +6,7 @@ export interface PricesBundle {
   eyebrow: string;
   title: string;
   description: string;
+  selectFarm: string;
   selectCrop: string;
   searchPlaceholder: string;
   globalSearchPlaceholder: string;

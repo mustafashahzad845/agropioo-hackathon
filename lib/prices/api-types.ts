@@ -3,6 +3,7 @@ import { z } from "zod";
 export const getPricesQuerySchema = z.object({
   crop_id: z.string().optional(),
   district: z.string().optional(),
+  farm_id: z.string().optional(),
   query: z.string().optional(),
   include_bordering: z.coerce.boolean().default(true),
 });

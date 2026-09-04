@@ -43,7 +43,7 @@ export default async function ProfitLossPage() {
     );
     seasons = (rows ?? []).map((r) => {
       const totalActual = Number(r.total_actual_cost ?? 0);
-      const actualRevenue = Number(r.actual_yield ?? 0) * Number(r.actual_price ?? 0);
+      const actualRevenue = Number(r.actual_price ?? 0);
       const netProfitLoss = actualRevenue - totalActual;
       const roi = totalActual > 0 ? Math.round(((actualRevenue - totalActual) / totalActual) * 1000) / 10 : null;
       return {

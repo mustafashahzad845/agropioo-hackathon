@@ -16,7 +16,7 @@ const roiChip = {
   break_even: "bg-agro-sprout/50 text-agro-ink",
 };
 
-function ActionDropdown({ seasonId }: { seasonId: string }) {
+function ActionDropdown({ seasonId, onArchive, onDelete }: { seasonId: string; onArchive?: () => void; onDelete?: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -45,12 +45,16 @@ function ActionDropdown({ seasonId }: { seasonId: string }) {
             <Link href={`/profit-loss/${seasonId}`} className="flex items-center px-4 py-2 text-sm text-agro-ink transition-colors hover:bg-agro-mint" onClick={() => setOpen(false)}>
               View details
             </Link>
-            <button type="button" className="flex w-full items-center px-4 py-2 text-start text-sm text-agro-ink transition-colors hover:bg-agro-mint" onClick={() => setOpen(false)}>
-              Archive
-            </button>
-            <button type="button" className="flex w-full items-center px-4 py-2 text-start text-sm text-agro-forest transition-colors hover:bg-agro-mint" onClick={() => setOpen(false)}>
-              Delete
-            </button>
+            {onArchive && (
+              <button type="button" className="flex w-full items-center px-4 py-2 text-start text-sm text-agro-ink transition-colors hover:bg-agro-mint" onClick={() => { setOpen(false); onArchive(); }}>
+                Archive
+              </button>
+            )}
+            {onDelete && (
+              <button type="button" className="flex w-full items-center px-4 py-2 text-start text-sm text-agro-forest transition-colors hover:bg-agro-mint" onClick={() => { setOpen(false); onDelete(); }}>
+                Delete
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -108,7 +112,7 @@ export default function SeasonCard({ season }: { season: { id: string; crop_name
         </span>
         {pl.roi !== null && (
           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.7rem] font-medium ${roiChip[roiStatus]}`}>
-            ROI: {pl.roi}%
+            Profit %: {pl.roi}%
           </span>
         )}
       </div>

@@ -45,7 +45,14 @@ export default function ExpenseTimeSeries({ expenses, projectedCosts }: { expens
     actualCum.push({ month: m, value: aAcc });
   });
 
-  if (sortedMonths.length === 0) return null;
+  if (sortedMonths.length === 0) {
+    return (
+      <div className="mt-4 flex flex-col items-center gap-2 rounded-xl border border-dashed border-agro-sprout bg-agro-paper p-6 text-center">
+        <p className="text-sm font-medium text-agro-slate">No expense data available yet</p>
+        <p className="text-xs text-agro-cloud">Start logging expenses to see monthly trends</p>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-4 overflow-x-auto">

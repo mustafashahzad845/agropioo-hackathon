@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 
 export default async function NewSeasonPage() {
   const session = await requireSessionPage();
-  const [farms, crops] = await Promise.all([
-    query<{ id: string; name: string }>(
-      `SELECT id, name FROM farms WHERE account_id = $1 AND archived_at IS NULL ORDER BY created_at DESC`,
+  const [farms, allCrops] = await Promise.all([
+    query<{ id: string; name: string; crops: string[] }>(
+      `SELECT id, name, crops FROM farms WHERE account_id = $1 AND archived_at IS NULL ORDER BY created_at DESC`,
       [session.accountId]
     ),
     query<{ id: string; name_en: string }>(
@@ -19,5 +19,13 @@ export default async function NewSeasonPage() {
     ),
   ]);
 
-  return <NewSeasonClient farms={farms} crops={crops} />;
+  const farmCrops = Object.fromEntries(farms.map((f) => [f.id, f.crops]));
+
+  return (
+    <NewSeasonClient
+      farms={farms.map(({ crops: _crops, ...rest }) => rest)}
+      crops={allCrops}
+      farmCrops={farmCrops}
+    />
+  );
 }
